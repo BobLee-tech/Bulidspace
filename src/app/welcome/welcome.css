@@ -1,0 +1,878 @@
+/* /welcome, ported from the card-studio prototype (tab 03).
+   One fixed canvas paints the backdrop (welcome-fx.ts); it sits in .wl-bg,
+   whose clip-path keeps the fixed layers inside this section so they never
+   cover the footer. The DOM on top only animates transform and opacity, and
+   GSAP never tweens an element that also uses the CSS `translate` property:
+   .wl-card / .wl-m / .wl-bub are placed with `translate`, and the timeline
+   moves their children (.wl-card-in, .wl-pop, .wl-bubble). */
+.wl-wait {
+  min-height: 100vh;
+}
+.wl {
+  --c: #ffd84d;
+  --soft: #c4c4c9;
+  position: relative;
+  padding-block: clamp(16px, 2.4vw, 28px) 96px;
+  text-align: center;
+  overflow-x: clip;
+}
+.wl-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  clip-path: inset(0);
+}
+.wl-neb {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(
+      44% 38% at 50% 27%,
+      color-mix(in oklab, var(--c) 15%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      30% 44% at 7% 32%,
+      color-mix(in oklab, var(--c) 10%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      30% 44% at 93% 32%,
+      color-mix(in oklab, var(--c) 10%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 26% 60% at 50% 0%,
+      rgba(255, 255, 255, 0.07),
+      transparent 70%
+    ),
+    radial-gradient(120% 90% at 50% 40%, transparent 50%, rgba(0, 0, 0, 0.65)),
+    var(--ink);
+}
+.wl-fx {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.wl-in {
+  position: relative;
+  z-index: 1;
+}
+/* Until the timeline has set every starting pose, keep the scene hidden so it
+   never flashes in its finished state first. */
+@media (prefers-reduced-motion: no-preference) {
+  html.fx .wl:not(.go) .wl-in {
+    visibility: hidden;
+  }
+}
+
+.wl-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 7px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(10, 10, 12, 0.6);
+  font: 500 11px var(--f-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--soft);
+  white-space: nowrap;
+}
+.wl-pulse {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c);
+  animation: wl-pulse 2.4s var(--ease-out) infinite;
+}
+@keyframes wl-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--c) 70%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 9px transparent;
+  }
+}
+.wl-bar {
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.wl-odo {
+  display: inline-flex;
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+}
+.wl-odo .wl-dg {
+  display: inline-block;
+  height: 1.3em;
+  overflow: hidden;
+}
+.wl-odo .wl-strip > span,
+.wl-count .wl-strip > span {
+  display: block;
+}
+.wl-odo .wl-strip {
+  display: block;
+  line-height: 1.3em;
+}
+
+.wl-title {
+  display: grid;
+  justify-items: center;
+  margin: 22px 0 0;
+  font-weight: 400;
+  letter-spacing: normal;
+}
+.wl-row {
+  display: block;
+  overflow: hidden;
+  padding: 0.06em 0.12em 0.14em;
+}
+.wl-row .ch {
+  display: inline-block;
+  white-space: pre;
+  will-change: transform;
+}
+.wl-row1 {
+  font: 500 clamp(26px, 3.8vw, 52px) / 1.1 var(--f-body);
+  letter-spacing: -0.02em;
+  color: rgba(244, 244, 242, 0.92);
+}
+.wl-name {
+  --sh: -30%;
+  position: relative;
+  display: inline-block;
+  font-family: var(--f-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+/* One highlight across the whole name: every glyph paints the word's gradient,
+   shifted to its own offset (--off), and --sh sweeps the highlight across. */
+.wl-name .ch {
+  background-image:
+    linear-gradient(
+      105deg,
+      transparent calc(var(--sh) - 9%),
+      rgba(255, 255, 255, 0.95) var(--sh),
+      transparent calc(var(--sh) + 9%)
+    ),
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #f0f0f2 30%,
+      #8e8e95 50%,
+      #e6e6ea 57%,
+      #ffffff 74%,
+      #b4b4ba 100%
+    );
+  background-size: var(--w, 100%) 100%;
+  background-position: var(--off, 0) 0;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.wl-comma {
+  color: rgba(244, 244, 242, 0.55);
+}
+.wl-row2 {
+  position: relative;
+  margin-top: 18px;
+}
+/* The key words sit in a viewfinder: an open slot on the board that your piece fills. */
+.wl-keywrap {
+  position: relative;
+  display: inline-block;
+  padding: 0.06em 0.3em 0.02em;
+}
+.wl-keywrap::before,
+.wl-keywrap::after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--c);
+  opacity: 0.85;
+}
+.wl-keywrap::before {
+  left: 0;
+  top: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+.wl-keywrap::after {
+  right: 0;
+  bottom: 0;
+  border-left: 0;
+  border-top: 0;
+}
+.wl-keyin {
+  position: relative;
+  display: inline-block;
+}
+.wl-key,
+.wl-key-glow,
+.wl-count {
+  font: 800 clamp(38px, 8vw, 112px) / 1.1 var(--f-display);
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+}
+.wl-key {
+  --sh: -30%;
+  position: relative;
+  display: inline-block;
+  background-image:
+    linear-gradient(
+      105deg,
+      transparent calc(var(--sh) - 8%),
+      rgba(255, 255, 255, 0.92) var(--sh),
+      transparent calc(var(--sh) + 8%)
+    ),
+    linear-gradient(
+      100deg,
+      #ff9cc0 0%,
+      #ffd84d 26%,
+      #7fdc77 50%,
+      #6ba6ff 74%,
+      #b59bff 100%
+    );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.wl-key-glow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    #ff9cc0 0%,
+    #ffd84d 26%,
+    #7fdc77 50%,
+    #6ba6ff 74%,
+    #b59bff 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: blur(26px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+/* The count: big chrome digits that roll like an odometer, the ordinal in the card's colour. */
+.wl-count {
+  display: inline-flex;
+  align-items: flex-start;
+  margin-right: 0.22em;
+  vertical-align: top;
+}
+.wl-count .wl-dg {
+  display: inline-block;
+  width: 0.74em;
+  height: 1.1em;
+  overflow: hidden;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.wl-count .wl-dg + .wl-dg {
+  margin-left: -0.04em;
+}
+.wl-count .wl-strip {
+  display: block;
+  line-height: 1.1em;
+  background: linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #f0f0f2 30%,
+      #8e8e95 50%,
+      #e6e6ea 57%,
+      #ffffff 74%,
+      #b4b4ba 100%
+    )
+    0 0 / 100% 1.1em repeat-y;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.wl-count sup {
+  margin: 0.2em 0 0 0.08em;
+  font-size: 0.32em;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--c);
+}
+.wl-slot {
+  position: absolute;
+  left: 2px;
+  top: -18px;
+  font: 500 10px var(--f-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mute);
+  white-space: nowrap;
+}
+.wl-slot b {
+  font-weight: 500;
+  color: var(--c);
+}
+.wl-sign {
+  display: block;
+  height: 36px;
+  max-width: 100%;
+  margin: 6px auto 0;
+  overflow: visible;
+}
+.wl-sign-piece {
+  color: var(--c);
+}
+.wl-en {
+  margin: 8px 0 0;
+  font: 500 15px var(--f-body);
+  letter-spacing: 0.3em;
+  color: var(--soft);
+}
+
+/* ---------- the scene: your card, the floor, the five mascots ---------- */
+.wl-scene {
+  position: relative;
+  height: clamp(320px, 33vw, 440px);
+  max-width: 1080px;
+  margin: 0 auto;
+}
+/* The floor is a perspective grid in a clipped box, so its near edge can't widen the page. */
+.wl-ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 84%;
+  height: 34%;
+  overflow: hidden;
+  pointer-events: none;
+  mask: radial-gradient(60% 100% at 50% 0%, #000 30%, transparent 90%);
+}
+.wl-floor {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  top: 0;
+  height: 260%;
+  transform-origin: 50% 0;
+  transform: perspective(520px) rotateX(74deg);
+  background:
+    linear-gradient(
+        color-mix(in oklab, var(--c) 30%, transparent) 1px,
+        transparent 1px
+      )
+      0 0 / 56px 56px,
+    linear-gradient(
+        90deg,
+        color-mix(in oklab, var(--c) 30%, transparent) 1px,
+        transparent 1px
+      )
+      0 0 / 56px 56px;
+  opacity: 0.35;
+}
+.wl-pool {
+  position: absolute;
+  left: 50%;
+  top: 92%;
+  width: min(66%, 640px);
+  height: 26%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--c), transparent);
+  filter: blur(34px);
+  opacity: 0.34;
+  pointer-events: none;
+}
+.wl-par {
+  display: block;
+  will-change: transform;
+}
+.wl-card {
+  position: absolute;
+  left: 50%;
+  top: 36%;
+  z-index: 2;
+  width: min(34%, 360px);
+  translate: -50% -50%;
+  text-align: left;
+}
+.wl-card-in {
+  will-change: transform, opacity;
+}
+.wl-card .mc-col {
+  position: static;
+}
+.wl-card .mc-stage {
+  max-width: none;
+}
+.wl-card .mc-shadow {
+  display: none;
+}
+.wl-card .mc-col:not(.shine) .mc-glare {
+  animation: none;
+  opacity: 0;
+}
+
+.wl-m {
+  all: unset;
+  --c: var(--paper);
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  z-index: var(--zi, 1);
+  width: calc(clamp(52px, 11.5%, 132px) * var(--s));
+  translate: -50% -100%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.wl-m:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 6px;
+  border-radius: 14px;
+}
+.wl-pop {
+  position: relative;
+  display: block;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+.wl-body {
+  position: relative;
+  display: block;
+}
+.wl-art {
+  position: relative;
+  display: block;
+  animation: wl-bob 3.6s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+.wl-art svg,
+.wl-art img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.wl-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 2%;
+  width: 66%;
+  height: 11%;
+  translate: -50% 45%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.8), transparent);
+  animation: wl-shadow 3.6s ease-in-out infinite;
+  animation-delay: var(--d);
+}
+@keyframes wl-bob {
+  50% {
+    translate: 0 -6%;
+  }
+}
+@keyframes wl-shadow {
+  50% {
+    scale: 0.76;
+    opacity: 0.6;
+  }
+}
+.wl-m.hop .wl-art {
+  animation: wl-hop 0.65s var(--ease-out);
+}
+@keyframes wl-hop {
+  40% {
+    transform: translateY(-10%) scale(1.06, 0.94);
+  }
+  70% {
+    transform: translateY(0) scale(0.96, 1.04);
+  }
+}
+/* Inlined mascots: eyes follow the pointer (--ex / --ey) and blink now and then. */
+.wl-m .look {
+  transform: translate(var(--ex, 0px), var(--ey, 0px));
+  transition: transform 0.4s var(--ease-out);
+}
+.wl-m .blink {
+  transform-box: fill-box;
+  transform-origin: 50% 55%;
+  animation: wl-blink 5.6s infinite;
+  animation-delay: var(--bd, 1.4s);
+}
+@keyframes wl-blink {
+  0%,
+  92%,
+  96%,
+  100% {
+    transform: scaleY(1);
+  }
+  94% {
+    transform: scaleY(0.12);
+  }
+}
+.wl-name-tag {
+  display: block;
+  margin-top: 8px;
+  font: 500 10.5px var(--f-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: color-mix(in oklab, var(--c) 78%, #fff);
+}
+.wl-name-tag em {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--c);
+  color: var(--ink);
+  font-style: normal;
+  letter-spacing: 0.04em;
+}
+.wl-bub {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  z-index: 4;
+  translate: -50% 0;
+  pointer-events: none;
+}
+.wl-m.l .wl-bub {
+  left: 0;
+  translate: 0 0;
+}
+.wl-m.r .wl-bub {
+  left: auto;
+  right: 0;
+  translate: 0 0;
+}
+.wl-bubble {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px 7px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(20, 20, 23, 0.92);
+  box-shadow:
+    0 14px 30px -12px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  font: 500 13px/1.2 var(--f-body);
+  color: var(--paper);
+  white-space: nowrap;
+  transform-origin: 50% 100%;
+}
+.wl-bubble::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 10px var(--c);
+}
+.wl-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  rotate: 45deg;
+  background: rgb(20, 20, 23);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.wl-m.l .wl-bubble::after {
+  left: 26px;
+}
+.wl-m.r .wl-bubble::after {
+  left: auto;
+  right: 22px;
+}
+/* Your mascot speaks from beside its head, so the bubble never covers the card. */
+.wl-m.you .wl-bub {
+  bottom: 58%;
+  left: 86%;
+  translate: 0 0;
+}
+.wl-m.you .wl-bubble::after {
+  top: 50%;
+  left: -1px;
+  margin: -4.5px 0 0 -4.5px;
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.wl-m:hover .wl-bubble,
+.wl-m:focus-visible .wl-bubble {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+/* Still (reduced motion): only your mascot speaks; the others on hover. */
+.wl.still .wl-m:not(.you) .wl-bubble {
+  opacity: 0;
+}
+
+.wl-meta {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  margin-top: 18px;
+}
+.wl-slogan {
+  margin: 0;
+  font: 700 clamp(18px, 2.2vw, 26px) / 1.3 var(--f-display);
+  letter-spacing: -0.02em;
+}
+.wl-slogan span {
+  display: block;
+  margin-top: 6px;
+  font: 500 clamp(15px, 1.6vw, 18px) var(--f-body);
+  letter-spacing: 0.12em;
+  color: var(--soft);
+}
+.wl-hint {
+  margin: 0;
+  font: 500 11px var(--f-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+/* ---------- next steps ---------- */
+.wl-next {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 48px;
+  text-align: left;
+}
+.wl-step {
+  --c: var(--paper);
+  position: relative;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+  padding: 22px 22px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 22px;
+  background: linear-gradient(
+    180deg,
+    rgba(20, 20, 23, 0.85),
+    rgba(12, 12, 14, 0.85)
+  );
+  overflow: hidden;
+  isolation: isolate;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 0.5s var(--ease-out),
+    border-color 0.3s;
+}
+.wl-next.anim .wl-step {
+  transition: none;
+}
+.wl-step::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(
+    320px circle at var(--gx, 50%) var(--gy, 0%),
+    color-mix(in oklab, var(--c) 16%, transparent),
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.wl-step::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    150deg,
+    color-mix(in oklab, var(--c) 65%, transparent),
+    transparent 38%,
+    transparent 70%,
+    rgba(255, 255, 255, 0.1)
+  );
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0.35;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+a.wl-step:hover {
+  transform: translateY(-4px);
+}
+.wl-step:hover::before,
+.wl-step:hover::after {
+  opacity: 1;
+}
+.wl-step:focus-visible {
+  outline: 1px solid var(--paper);
+  outline-offset: 3px;
+}
+.wl-ico {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--c) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 30%, transparent);
+  color: var(--c);
+}
+.wl-ico svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wl-step h3 {
+  margin: 4px 0 0;
+  font: 700 18px/1.25 var(--f-display);
+  letter-spacing: -0.02em;
+}
+.wl-step p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--soft);
+}
+.wl-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font: 500 12px var(--f-mono);
+  letter-spacing: 0.08em;
+}
+.wl-go i {
+  font-style: normal;
+  transition: translate 0.4s var(--ease-out);
+}
+.wl-step:hover .wl-go i {
+  translate: 4px 0;
+}
+.wl-step.first {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 18px;
+}
+.wl-step.first > :not(.wl-qr) {
+  grid-column: 1;
+}
+.wl-qr {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  align-self: start;
+  width: 108px;
+  padding: 7px;
+  border-radius: 14px;
+  background: var(--paper);
+}
+.wl-qr img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+.wl-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 28px;
+}
+
+@media (max-width: 860px) {
+  .wl-next {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .wl-kicker {
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+  }
+  .wl-kicker .wl-wt {
+    display: none;
+  }
+  .wl-scene {
+    height: clamp(300px, 90vw, 400px);
+  }
+  .wl-card {
+    width: 64%;
+    top: 34%;
+  }
+  .wl-m:not(.you) .wl-bub {
+    display: none;
+  }
+  .wl-m.you .wl-bub {
+    bottom: calc(100% + 2px);
+    left: 50%;
+    translate: -50% 0;
+  }
+  .wl-m.you .wl-bubble::after {
+    top: 100%;
+    left: 50%;
+    margin: -4.5px 0 0 -4.5px;
+    border: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  .wl-name-tag {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+  }
+  .wl-name-tag em {
+    display: none;
+  }
+  .wl-row2 {
+    margin-top: 26px;
+  }
+  .wl-keywrap::before,
+  .wl-keywrap::after {
+    width: 12px;
+    height: 12px;
+  }
+  .wl-step.first {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wl-qr {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wl-art,
+  .wl-pulse,
+  .wl-shadow,
+  .wl-m .blink {
+    animation: none !important;
+  }
+  .wl-m .look {
+    transition: none;
+  }
+  .wl-hint {
+    display: none;
+  }
+}

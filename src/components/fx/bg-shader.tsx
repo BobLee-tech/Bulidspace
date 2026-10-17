@@ -20,9 +20,10 @@ export function BgShader() {
     const reduce = matchMedia("(prefers-reduced-motion: reduce)");
     const update = rafThrottle(() => {
       if (!mount || lost) return;
-      const hero = [...document.querySelectorAll<HTMLElement>(".hero")].find(
-        (h) => h.getClientRects().length,
-      );
+      // Also pages that paint their own full-screen backdrop ([data-bg-pause]).
+      const hero = [
+        ...document.querySelectorAll<HTMLElement>(".hero, [data-bg-pause]"),
+      ].find((h) => h.getClientRects().length);
       const r = hero?.getBoundingClientRect();
       const heroDominates =
         r &&

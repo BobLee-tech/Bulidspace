@@ -1,12 +1,8 @@
 import { z } from "zod";
 import { MEDIA_PATH, VIDEO_MAX_SECONDS } from "./media";
 import {
-  BLOCKERS,
   COMMENT_KINDS,
-  EVENT_INTEREST,
-  REFERRAL_SOURCES,
   ROLES,
-  SKILLS,
   UPDATE_KINDS,
   VOLUNTEER_POSITIONS,
   WEEKLY_HOURS,
@@ -66,63 +62,6 @@ export function channelFromSearch(search: string): string | null {
   const params = new URLSearchParams(search);
   return normalizeChannel(params.get("ref") ?? params.get("utm_source"));
 }
-
-const ZID = /^z?\d{7}$/i;
-
-const joinFields = {
-  nickname: text(40),
-  schoolDegree: text(80),
-  major: text(80),
-  skills: z.array(z.enum(SKILLS)).max(SKILLS.length),
-  idea: optionalText(500),
-  stalledProject: z.enum(["yes", "no"], { error: "请选择|Pick one" }),
-  blockers: z.array(z.enum(BLOCKERS)).max(BLOCKERS.length),
-  weeklyHours: z.enum(WEEKLY_HOURS, {
-    error: "请选择每周可投入时间|Pick your weekly hours",
-  }),
-  referralSource: z.enum(REFERRAL_SOURCES, {
-    error: "请选择从哪里知道我们|Tell us how you found us",
-  }),
-  channel: z.string().transform(normalizeChannel),
-  showcaseConsent: z.boolean(),
-  // Optional: it sizes the next event, nobody has to answer.
-  eventInterest: z.enum(EVENT_INTEREST).nullable(),
-};
-
-/** Whatever was typed into a field the member did not opt in to is dropped. */
-const dropped = <T>(value: T) => z.unknown().transform(() => value);
-
-// Only the fields ops need (PRD §4.3 隐私). No student card; a name and zID
-// are kept only when the member opts in to back the club's application to
-// become an official club, and consents to passing them on for that purpose.
-// stalledProject + blockers + weeklyHours are the three W1 validation
-// questions from PRD §1.4.
-//
-// Two plain objects rather than one object with a cross-field refinement, so
-// a supporter's missing name shows up in the same pass as any other error.
-export const joinSchema = z.discriminatedUnion("affiliationSupport", [
-  z.object({
-    ...joinFields,
-    affiliationSupport: z.literal(false),
-    fullName: dropped(null),
-    zid: dropped(null),
-    affiliationConsent: dropped(false),
-  }),
-  z.object({
-    ...joinFields,
-    affiliationSupport: z.literal(true),
-    fullName: text(80),
-    zid: z
-      .string()
-      .trim()
-      .regex(ZID, "zID 是 z 加 7 位数字|A zID is z followed by 7 digits")
-      .transform((v) => `z${v.replace(/^z/i, "")}`),
-    affiliationConsent: z.literal(true, {
-      error: "勾选同意后才能登记|Tick the box to register your support",
-    }),
-  }),
-]);
-export type JoinInput = z.infer<typeof joinSchema>;
 
 // Core-team volunteers can be reached, so unlike the join form this one asks
 // for contact details, and nothing is stored unless the applicant consents.
@@ -247,27 +186,6 @@ export const projectCommentSchema = z
   })
   .transform((c) => (c.parentId ? { ...c, kind: null } : c));
 export type ProjectCommentSubmission = z.infer<typeof projectCommentSchema>;
-
-export function parseJoinForm(form: FormData) {
-  return joinSchema.safeParse({
-    nickname: form.get("nickname") ?? "",
-    schoolDegree: form.get("schoolDegree") ?? "",
-    major: form.get("major") ?? "",
-    skills: form.getAll("skills"),
-    idea: form.get("idea") ?? "",
-    stalledProject: form.get("stalledProject") ?? undefined,
-    blockers: form.getAll("blockers"),
-    weeklyHours: form.get("weeklyHours") ?? undefined,
-    referralSource: form.get("referralSource") ?? undefined,
-    channel: form.get("channel") ?? "",
-    showcaseConsent: form.get("showcaseConsent") === "on",
-    eventInterest: form.get("eventInterest") ?? null,
-    affiliationSupport: form.get("affiliationSupport") === "on",
-    fullName: form.get("fullName") ?? "",
-    zid: form.get("zid") ?? "",
-    affiliationConsent: form.get("affiliationConsent") === "on",
-  });
-}
 
 export function parseVolunteerForm(form: FormData) {
   return volunteerSchema.safeParse({

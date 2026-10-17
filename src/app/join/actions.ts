@@ -1,57 +1,82 @@
 "use server";
 
-import { parseJoinForm, type FormState } from "@/lib/forms";
-import { invalidForm, submitFailed, withoutDatabase } from "@/lib/form-actions";
-import { looksAutomated } from "@/lib/spam";
-import { getSupabase } from "@/lib/supabase/client";
+import { redirect } from "next/navigation";
+import { createMember, sendCode, verifyCode } from "@/lib/auth";
+import { fieldErrors } from "@/lib/forms";
+import {
+  codeSchema,
+  emailSchema,
+  parseMemberProfile,
+} from "@/lib/member-forms";
+import { HONEYPOT_FIELD } from "@/lib/spam";
 
-export async function submitJoin(
-  _prev: FormState,
+export type StepState =
+  | { status: "idle" }
+  | { status: "error"; message: string; fieldErrors?: Record<string, string> }
+  | { status: "ok"; email?: string; hasCard?: boolean };
+
+/** Step 1: email in, a 6-digit code goes out. */
+export async function requestCode(
+  _prev: StepState,
   form: FormData,
-): Promise<FormState> {
-  // Bots get a convincing success and nothing is stored.
-  if (looksAutomated(form)) {
-    return { status: "ok", nickname: String(form.get("nickname") ?? "") };
+): Promise<StepState> {
+  const parsed = emailSchema.safeParse(form.get("email") ?? "");
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0].message,
+      fieldErrors: { email: parsed.error.issues[0].message },
+    };
   }
-
-  const parsed = parseJoinForm(form);
-  if (!parsed.success) return invalidForm(parsed.error);
-
-  const db = getSupabase();
-  if (!db) {
-    // Never log the name or zID, even in development.
-    const { fullName, zid, ...loggable } = parsed.data;
-    return withoutDatabase(
-      "join",
-      "报名暂未开放，请稍后再试|Sign-up isn't open yet",
-      {
-        ...loggable,
-        fullName: fullName && "[redacted]",
-        zid: zid && "[redacted]",
-      },
-      { status: "ok", nickname: parsed.data.nickname },
-    );
+  // Bots that fill the honeypot get a convincing answer and no email. The
+  // timing check other forms use is skipped here: autofill can beat it, and a
+  // person who never gets their code has no way to tell.
+  if (String(form.get(HONEYPOT_FIELD) ?? "").trim()) {
+    return { status: "ok", email: parsed.data };
   }
+  const sent = await sendCode(parsed.data);
+  return sent.ok
+    ? { status: "ok", email: parsed.data }
+    : { status: "error", message: sent.message };
+}
 
-  const v = parsed.data;
-  const { error } = await db.from("join_submissions").insert({
-    nickname: v.nickname,
-    school_degree: v.schoolDegree,
-    major: v.major,
-    skills: v.skills,
-    idea: v.idea,
-    stalled_project: v.stalledProject === "yes",
-    blockers: v.blockers,
-    weekly_hours: v.weeklyHours,
-    referral_source: v.referralSource,
-    channel: v.channel,
-    showcase_consent: v.showcaseConsent,
-    next_event_interest: v.eventInterest,
-    affiliation_support: v.affiliationSupport,
-    full_name: v.fullName,
-    zid: v.zid,
-    affiliation_consent: v.affiliationConsent,
-  });
-  if (error) return submitFailed("join", error);
-  return { status: "ok", nickname: v.nickname };
+/** Step 2: the code signs the member in; returning members go to their card. */
+export async function confirmCode(
+  _prev: StepState,
+  form: FormData,
+): Promise<StepState> {
+  const email = emailSchema.safeParse(form.get("email") ?? "");
+  const code = codeSchema.safeParse(form.get("code") ?? "");
+  if (!email.success || !code.success) {
+    const message = (code.error ?? email.error)!.issues[0].message;
+    return { status: "error", message, fieldErrors: { code: message } };
+  }
+  const verified = await verifyCode(email.data, code.data);
+  if (!verified.ok) {
+    return {
+      status: "error",
+      message: verified.message,
+      fieldErrors: { code: verified.message },
+    };
+  }
+  if (verified.value.hasCard) redirect("/me");
+  return { status: "ok", hasCard: false };
+}
+
+/** Steps 3 and 4: profile and mascot make the card, numbered in join order. */
+export async function makeCard(
+  _prev: StepState,
+  form: FormData,
+): Promise<StepState> {
+  const parsed = parseMemberProfile(form);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "有几项还没填好|A few fields need attention",
+      fieldErrors: fieldErrors(parsed.error),
+    };
+  }
+  const made = await createMember(parsed.data);
+  if (!made.ok) return { status: "error", message: made.message };
+  redirect("/welcome");
 }
