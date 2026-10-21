@@ -285,22 +285,17 @@ async function adminKey() {
 }
 
 /** Runs a host action with the /admin key. Without one the database isn't
- * asked at all: every wrong key counts towards locking it for everyone. */
+ * asked at all: every wrong key counts towards the shared throttle. */
 async function asHost(run: (store: LiveStore, key: string) => Promise<string>) {
   const key = await adminKey();
   if (!key && isSupabaseConfigured()) return hostMessage("denied");
   return withStore(async (store) => hostMessage(await run(store, key)));
 }
 
+// "throttled" falls through to "denied": only a wrong key is throttled, and
+// waiting doesn't fix a wrong key, signing in again does.
 function hostMessage(r: string): LiveResult {
   if (r === "ok") return { status: "ok" };
-  if (r === "throttled") {
-    return {
-      status: "error",
-      message:
-        "口令输错太多次，10 分钟后再试|Too many wrong keys, wait 10 minutes",
-    };
-  }
   if (r === "missing")
     return { status: "error", message: "找不到这一条|Not found" };
   return {

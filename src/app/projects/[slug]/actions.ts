@@ -163,21 +163,15 @@ export async function deleteProjectComment(
       message: "删除失败，请稍后再试|Couldn't delete, try again",
     };
   }
-  if (data === "denied") {
-    // The key was changed in Vault: this browser has to sign in again.
+  // The key was changed in Vault: this browser has to sign in again. Only a
+  // wrong key is ever throttled, so "throttled" means the same here.
+  if (data === "denied" || data === "throttled") {
     jar.delete(ADMIN_KEY_COOKIE);
     jar.delete(ADMIN_FLAG_COOKIE);
     return {
       ok: false,
       message:
         "口令已失效，请在 /admin 重新登录|Your admin key changed, sign in again at /admin",
-    };
-  }
-  if (data === "throttled") {
-    return {
-      ok: false,
-      message:
-        "输错次数太多，请 10 分钟后再试|Too many wrong keys, try again in 10 minutes",
     };
   }
 

@@ -4,9 +4,10 @@ import { getLiveStore } from "@/lib/live-store";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 // The host console's view: names and feedback text. The database checks the
-// /admin key on every call and counts every wrong one (ten in ten minutes
-// locks the key for everyone), so a phone that never signed in at /admin is
-// turned away here without asking the database.
+// /admin key on every call and counts every wrong one (after ten in ten
+// minutes wrong keys get "throttled"; the right key still works), so a phone
+// that never signed in at /admin is turned away here without asking the
+// database.
 export async function GET(
   _req: Request,
   ctx: RouteContext<"/live/[slug]/api/host">,

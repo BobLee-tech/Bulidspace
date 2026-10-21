@@ -43,11 +43,12 @@ export async function adminSignIn(
         "暂时无法验证，请稍后再试|Couldn't check the key, try again later",
     };
   }
+  // Only a wrong key is throttled; the right one always gets "ok".
   if (data === "throttled") {
     return {
       status: "error",
       message:
-        "输错次数太多，请 10 分钟后再试|Too many wrong keys, try again in 10 minutes",
+        "口令不对（最近输错很多次，正确的口令照样能用）|That key is wrong (many wrong tries lately; the right key still works)",
     };
   }
   if (data !== "ok") {
