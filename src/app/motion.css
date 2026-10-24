@@ -1282,6 +1282,36 @@ html.fx .top {
   gap: 12px;
 }
 
+/* "Translated / 译文": tiny grey mark on text ops translated (t.tsx), bottom right. */
+.tr-mark {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--mute);
+  opacity: 0.75;
+  pointer-events: none;
+}
+.pcard-tr {
+  position: absolute;
+  right: 14px;
+  bottom: 6px;
+}
+.pgrid.as-list .pcard-tr {
+  right: 4px;
+  bottom: 2px;
+}
+.d-tr {
+  margin-left: auto;
+  align-self: flex-end;
+}
+.tl-tr {
+  align-self: flex-end;
+}
+.cm-tr {
+  margin-left: auto;
+  align-self: center;
+}
+
 /* ---------- page head: terminal path, chrome title, lit outline, readouts ---------- */
 .page-head {
   display: grid;
@@ -1905,6 +1935,23 @@ html.fx .top {
   line-height: 1;
 }
 .d-title[data-size="sm"] {
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1.05;
+}
+/* An English name is sized by its own length. */
+html[data-lang="en"] .d-title[data-size-en="xl"] {
+  font-size: clamp(44px, 7.4vw, 104px);
+  line-height: 0.94;
+}
+html[data-lang="en"] .d-title[data-size-en="lg"] {
+  font-size: clamp(40px, 5.2vw, 72px);
+  line-height: 0.94;
+}
+html[data-lang="en"] .d-title[data-size-en="md"] {
+  font-size: clamp(32px, 3.8vw, 54px);
+  line-height: 1;
+}
+html[data-lang="en"] .d-title[data-size-en="sm"] {
   font-size: clamp(28px, 3vw, 42px);
   line-height: 1.05;
 }

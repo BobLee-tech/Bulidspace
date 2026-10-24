@@ -18,8 +18,13 @@ import { UpdateForm } from "./update-form";
 import { Arr } from "@/components/fx/arr";
 import { CoverMaterial } from "@/components/fx/cover-material";
 import { TimelineFx } from "@/components/fx/scroll-fx";
-import { Cover, StatusDot, coverSeed } from "@/components/project-card";
-import { T } from "@/components/t";
+import {
+  Cover,
+  StatusDot,
+  coverSeed,
+  projectText,
+} from "@/components/project-card";
+import { T, TranslatedMark } from "@/components/t";
 
 export async function generateMetadata({
   params,
@@ -100,6 +105,7 @@ async function ProjectDetail({ slug }: { slug: string }) {
   if (!result) notFound();
   const { project, updates } = result;
   const { media } = project;
+  const name = projectText(project, "name");
   const hasMedia = Boolean(
     media.coverUrl || media.videoUrl || media.videoPosterUrl,
   );
@@ -124,12 +130,20 @@ async function ProjectDetail({ slug }: { slug: string }) {
                 <StatusDot status={project.status} />
                 <T {...STATUS_LABEL[project.status]} />
               </span>
-              <span className="tag">{project.targetUser}</span>
+              <span className="tag">
+                <T {...projectText(project, "targetUser")} />
+              </span>
             </div>
-            <h1 className="d-title" data-size={titleSize(project.name)}>
-              {project.name}
+            <h1
+              className="d-title"
+              data-size={titleSize(project.name)}
+              data-size-en={titleSize(name.en ?? project.name)}
+            >
+              <T {...name} />
             </h1>
-            <p className="d-lede">{project.problem}</p>
+            <p className="d-lede">
+              <T {...projectText(project, "problem")} />
+            </p>
             <div className="d-cta">
               {project.status !== "paused" && (
                 <AskToJoin>
@@ -156,6 +170,7 @@ async function ProjectDetail({ slug }: { slug: string }) {
                   Demo <Arr diag />
                 </a>
               )}
+              <TranslatedMark lang={project.translated} className="d-tr" />
             </div>
           </div>
           <figure className="d-cover">
@@ -219,7 +234,9 @@ async function ProjectDetail({ slug }: { slug: string }) {
                   <span className="d-next-arrow" aria-hidden>
                     →
                   </span>
-                  <p>{project.nextStep}</p>
+                  <p>
+                    <T {...projectText(project, "nextStep")} />
+                  </p>
                 </div>
               </section>
             )}
@@ -259,7 +276,9 @@ async function ProjectDetail({ slug }: { slug: string }) {
                           <span className="tag">
                             <T {...UPDATE_KIND_LABEL[u.kind]} />
                           </span>
-                          <p>{u.body}</p>
+                          <p>
+                            <T zh={u.body} en={u.bodyEn ?? u.body} />
+                          </p>
                           {u.url && (
                             <a
                               href={u.url}
@@ -270,6 +289,10 @@ async function ProjectDetail({ slug }: { slug: string }) {
                               <T zh="查看 ↗" en="View ↗" />
                             </a>
                           )}
+                          <TranslatedMark
+                            lang={u.translated}
+                            className="tl-tr"
+                          />
                         </div>
                       </li>
                     );

@@ -124,6 +124,20 @@ export const NO_SIGNUPS: EventSignups = {
 
 export type RegistrationStatus = "confirmed" | "waitlist";
 
+// Project cards, updates and comments in both languages
+// (20261024000000_bilingual_content.sql): the main fields are the Chinese side,
+// ops add the English side by hand (docs/translation.md), and an empty English
+// field falls back to the main one.
+export type Lang = "zh" | "en";
+
+/** The English side of a project's text; null where ops left it empty. */
+export type ProjectEn = {
+  name: string | null;
+  problem: string | null;
+  targetUser: string | null;
+  nextStep: string | null;
+};
+
 export type Project = {
   slug: string;
   name: string;
@@ -140,6 +154,10 @@ export type Project = {
   media: ProjectMedia;
   /** Visible comments, replies included; 0 for sample data and previews. */
   commentCount: number;
+  /** Absent on the submit form's preview. */
+  en?: ProjectEn;
+  /** The language showing a translation, marked "Translated"; null when the author wrote it. */
+  translated?: Lang | null;
 };
 
 /** Signed, short-lived URLs for an approved project's uploads. */
@@ -163,6 +181,8 @@ export const NO_MEDIA: ProjectMedia = {
 export type ProjectUpdate = {
   kind: UpdateKind;
   body: string;
+  bodyEn: string | null;
+  translated: Lang | null;
   url: string | null;
   occurredAt: string;
 };
@@ -175,6 +195,8 @@ export type ProjectComment = {
   kind: CommentKind | null;
   nickname: string;
   body: string;
+  bodyEn: string | null;
+  translated: Lang | null;
   /** Marked by ops: the reply really is from the project owner. */
   isOwner: boolean;
   createdAt: string;

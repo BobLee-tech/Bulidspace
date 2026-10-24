@@ -40,8 +40,8 @@ pnpm check   # lint + typecheck + format + test + build
 | 表                       | 公开可读           | 公开可写                                                         |
 | ------------------------ | ------------------ | ---------------------------------------------------------------- |
 | `events`                 | `published = true` | —                                                                |
-| `projects`               | 审核通过的         | 只能投稿为 `pending`                                             |
-| `project_updates`        | 审核通过的         | 只能投稿为 `pending`                                             |
+| `projects`               | 审核通过的         | 只能投稿为 `pending`，英文列不可写                               |
+| `project_updates`        | 审核通过的         | 只能投稿为 `pending`，英文列不可写                               |
 | `tutorials`              | `published = true` | —                                                                |
 | `weekly_picks`           | `published = true` | —                                                                |
 | `join_submissions`       | —                  | 可提交，不可读回                                                 |
@@ -54,6 +54,7 @@ pnpm check   # lint + typecheck + format + test + build
 
 - **新增活动**：`events` 加一行，填好后勾选 `published`。报名链接用 Luma / Google Forms。
 - **审核项目**：`projects` 里把 `review_status` 改成 `approved` 即公开。
+- **中英双语**：项目卡、进展和评论的另一种语言由运营补，用 AI 翻译、人工检查后写回，审核时一起做（先翻译再改 `approved`）。主列放中文，`*_en` 列放英文，`original_lang` 记作者原来写的语言；待翻译的内容在视图 `translation_queue` 里。步骤和提示词见 [`docs/translation.md`](docs/translation.md)。
 - **记录进展**：`project_updates` 加一行（代码提交 / Demo / 更新帖），默认就是 `approved`。「双周活跃项目数」来自视图 `biweekly_active_projects`（目前只在后台看，首页不展示）。
 - **审核进展**：发起人在项目页「提交进展」投稿的行是 `pending`，核对后改成 `approved` 才会上时间线并计入指标。
 - **导出双周活跃项目数**：视图 `biweekly_active_projects_history`（每周一行），Export → CSV。视图 `project_activity` 列出每个项目最近一次进展，超过 14 天没动静的排在最前，用来回访；两个视图只在后台可见。
@@ -91,7 +92,8 @@ pnpm check   # lint + typecheck + format + test + build
 
 - 新文案用 `<T zh="…" en="…" />`；状态、角色等标签在 `src/lib/types.ts`，是 `{ zh, en }` 对象。
 - 表单校验和提交提示写成 `"中文|English"`，用 `<Msg s={…} />` 渲染。
-- 运营在 Supabase 里填的内容（活动标题、项目卡）按原样显示，不翻译。
+- 项目卡、进展和评论有英文列（`*_en`），英文页面优先显示英文列，为空时显示主列（中文）；翻译过的那一边右下角带灰色小字「Translated / 译文」（`<TranslatedMark />`）。英文列由运营手动补，见 [`docs/translation.md`](docs/translation.md)。
+- 运营在 Supabase 里填的其他内容（活动标题等）按原样显示，不翻译。
 
 ## 防刷
 

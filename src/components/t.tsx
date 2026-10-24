@@ -17,6 +17,29 @@ export function T({ zh, en }: Bi) {
   );
 }
 
+/**
+ * Small grey mark on text ops translated, shown only in the language that
+ * reads the translation; renders nothing when the author wrote it.
+ */
+export function TranslatedMark({
+  lang,
+  className = "",
+}: {
+  lang: "zh" | "en" | null | undefined;
+  className?: string;
+}) {
+  if (!lang) return null;
+  return lang === "en" ? (
+    <span data-l="en" lang="en" className={`tr-mark ${className}`}>
+      Translated
+    </span>
+  ) : (
+    <span data-l="zh" className={`tr-mark ${className}`}>
+      译文
+    </span>
+  );
+}
+
 export const LANG_STORAGE_KEY = "bs-lang";
 
 /** Runs before first paint so English readers never see a flash of Chinese. */

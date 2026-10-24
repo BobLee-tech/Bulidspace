@@ -13,6 +13,7 @@ import {
   NO_MEDIA,
   NO_SIGNUPS,
   type EventSignups,
+  type Lang,
   type Project,
   type ProjectComment,
   type ProjectUpdate,
@@ -154,7 +155,20 @@ export async function getEventDetail(slug: string): Promise<{
 
 const PROJECT_COLUMNS =
   "slug,name,problem,target_user,status,needed_roles,next_step,contact,owner_name,repo_url,demo_url,updated_at," +
-  "cover_path,cover_focus_x,cover_focus_y,video_path,video_poster_path,video_seconds";
+  "cover_path,cover_focus_x,cover_focus_y,video_path,video_poster_path,video_seconds," +
+  "name_en,problem_en,target_user_en,next_step_en,original_lang";
+
+/**
+ * The side ops translated, which gets a small "Translated" mark: the other
+ * language from the one the author wrote in, once the English side exists.
+ */
+function translatedSide(
+  originalLang: Lang | null,
+  hasEnglish: boolean,
+): Lang | null {
+  if (!originalLang || !hasEnglish) return null;
+  return originalLang === "zh" ? "en" : "zh";
+}
 
 type ProjectRow = {
   slug: string;
@@ -175,6 +189,11 @@ type ProjectRow = {
   video_path: string | null;
   video_poster_path: string | null;
   video_seconds: number | null;
+  name_en: string | null;
+  problem_en: string | null;
+  target_user_en: string | null;
+  next_step_en: string | null;
+  original_lang: Lang | null;
   /** Only the plaza asks for it: `project_comments(count)`. */
   project_comments?: { count: number }[];
 };
@@ -240,6 +259,12 @@ async function toProjects(
 }
 
 function toProject(p: ProjectRow): Project {
+  const en = {
+    name: p.name_en,
+    problem: p.problem_en,
+    targetUser: p.target_user_en,
+    nextStep: p.next_step_en,
+  };
   return {
     slug: p.slug,
     name: p.name,
@@ -255,6 +280,11 @@ function toProject(p: ProjectRow): Project {
     updatedAt: p.updated_at,
     media: NO_MEDIA,
     commentCount: p.project_comments?.[0]?.count ?? 0,
+    en,
+    translated: translatedSide(
+      p.original_lang,
+      Object.values(en).some((v) => v !== null),
+    ),
   };
 }
 
@@ -293,7 +323,9 @@ export async function getProject(slug: string): Promise<{
 
   const { data, error } = await db
     .from("projects")
-    .select(`${PROJECT_COLUMNS},project_updates(kind,body,url,occurred_at)`)
+    .select(
+      `${PROJECT_COLUMNS},project_updates(kind,body,body_en,original_lang,url,occurred_at)`,
+    )
     .eq("slug", slug)
     .order("occurred_at", {
       referencedTable: "project_updates",
@@ -307,6 +339,8 @@ export async function getProject(slug: string): Promise<{
     project_updates: {
       kind: ProjectUpdate["kind"];
       body: string;
+      body_en: string | null;
+      original_lang: Lang | null;
       url: string | null;
       occurred_at: string;
     }[];
@@ -317,6 +351,8 @@ export async function getProject(slug: string): Promise<{
     updates: row.project_updates.map((u) => ({
       kind: u.kind,
       body: u.body,
+      bodyEn: u.body_en,
+      translated: translatedSide(u.original_lang, u.body_en !== null),
       url: u.url,
       occurredAt: u.occurred_at,
     })),
@@ -340,7 +376,7 @@ export async function getProjectComments(
   const { data, error } = await db
     .from("project_comments")
     .select(
-      "id,parent_id,kind,nickname,body,is_owner,created_at,projects!inner(slug)",
+      "id,parent_id,kind,nickname,body,body_en,original_lang,is_owner,created_at,projects!inner(slug)",
     )
     .eq("projects.slug", slug)
     .order("created_at")
@@ -353,6 +389,8 @@ export async function getProjectComments(
     kind: c.kind,
     nickname: c.nickname,
     body: c.body,
+    bodyEn: c.body_en,
+    translated: translatedSide(c.original_lang, c.body_en !== null),
     isOwner: c.is_owner,
     createdAt: c.created_at,
   }));

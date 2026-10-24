@@ -43,6 +43,14 @@ export const sampleProjects: Project[] = [
     updatedAt: "2026-10-10T12:00:00+11:00",
     media: NO_MEDIA,
     commentCount: 0,
+    en: {
+      name: null,
+      problem:
+        "Before picking a course you want to know its real workload, and right now the only way is digging through group chats.",
+      targetUser: "New coursework master's students",
+      nextStep: "Invite 20 classmates to try the course review flow.",
+    },
+    translated: "en",
   },
 ];
 

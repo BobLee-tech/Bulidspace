@@ -10,10 +10,19 @@ import {
   ROLE_LABEL,
   STATUS_LABEL,
   type Project,
+  type ProjectEn,
   type ProjectMedia,
 } from "@/lib/types";
 import { CoverMedia } from "./project-media";
-import { T } from "./t";
+import { T, TranslatedMark } from "./t";
+
+/** A text field in both languages; English falls back to the main field. */
+export function projectText(
+  project: Project,
+  field: keyof ProjectEn,
+): { zh: string | null; en: string | null } {
+  return { zh: project[field], en: project.en?.[field] ?? project[field] };
+}
 
 /** Stable small hash so a project always gets the same generative cover. */
 export function coverSeed(s: string) {
@@ -71,18 +80,22 @@ export function ProjectCard({
             <StatusDot status={project.status} />
             <T {...STATUS_LABEL[project.status]} />
           </span>
-          <span className="mono mute">{project.targetUser}</span>
+          <span className="mono mute">
+            <T {...projectText(project, "targetUser")} />
+          </span>
         </div>
         <h3>
           {preview ? (
             project.name
           ) : (
             <Link href={`/projects/${project.slug}`} className="pcard-link">
-              {project.name}
+              <T {...projectText(project, "name")} />
             </Link>
           )}
         </h3>
-        <p className="prob">{project.problem}</p>
+        <p className="prob">
+          <T {...projectText(project, "problem")} />
+        </p>
       </div>
       {project.neededRoles.length > 0 && (
         <div className="pcard-need">
@@ -124,6 +137,7 @@ export function ProjectCard({
           )}
         </span>
       </div>
+      <TranslatedMark lang={project.translated} className="pcard-tr" />
     </article>
   );
 }

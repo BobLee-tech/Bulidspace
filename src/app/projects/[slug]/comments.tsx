@@ -22,7 +22,7 @@ import type { Flip } from "gsap/Flip";
 import Link from "next/link";
 import { Arr, Hud } from "@/components/fx/arr";
 import { SpamGuard } from "@/components/spam-guard";
-import { Msg, T } from "@/components/t";
+import { Msg, T, TranslatedMark } from "@/components/t";
 import { hasAdminFlag } from "@/lib/admin";
 import { countKind, threadsOf } from "@/lib/comments";
 import { formatShortDate, formatTime } from "@/lib/format";
@@ -91,12 +91,24 @@ function Avatar({ name, owner }: { name: string; owner: boolean }) {
   );
 }
 
-function Body({ text }: { text: string }) {
+/** A reply's leading "@nickname", set apart from the rest. */
+function Mention({ text }: { text: string }) {
   const m = text.match(/^(@\S+)\s+([\s\S]*)$/);
-  if (!m) return <p className="cm-text">{text}</p>;
+  if (!m) return text;
+  return (
+    <>
+      <span className="cm-at">{m[1]}</span> {m[2]}
+    </>
+  );
+}
+
+function Body({ c }: { c: ProjectComment }) {
   return (
     <p className="cm-text">
-      <span className="cm-at">{m[1]}</span> {m[2]}
+      <T
+        zh={<Mention text={c.body} />}
+        en={<Mention text={c.bodyEn ?? c.body} />}
+      />
     </p>
   );
 }
@@ -216,8 +228,8 @@ function Comment({
             {formatShortDate(c.createdAt)} {formatTime(c.createdAt)}
           </time>
         </header>
-        <Body text={c.body} />
-        {(onReply || admin) && (
+        <Body c={c} />
+        {(onReply || admin || c.translated) && (
           <div className="cm-foot">
             {onReply && (
               <button type="button" className="ibtn" onClick={onReply}>
@@ -232,6 +244,7 @@ function Comment({
                 hasReplies={admin.hasReplies}
               />
             )}
+            <TranslatedMark lang={c.translated} className="cm-tr" />
           </div>
         )}
       </div>

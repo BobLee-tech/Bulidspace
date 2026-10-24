@@ -12,6 +12,8 @@ const c = (
   kind: "idea",
   nickname: id,
   body: "…",
+  bodyEn: null,
+  translated: null,
   isOwner: false,
   createdAt,
   ...extra,
