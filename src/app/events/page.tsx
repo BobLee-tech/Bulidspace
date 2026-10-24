@@ -5,6 +5,7 @@ import { PageHead } from "@/components/page-head";
 import { SampleNotice } from "@/components/sample-notice";
 import { getEventSchedule, getEventSignups, getTutorials } from "@/lib/data";
 import { eventCopy, getEventPage } from "@/lib/event-pages";
+import { getEventResults, worksOnWall } from "@/lib/event-results";
 import { formatShortDate, formatTimeRange } from "@/lib/format";
 import { roadmapWeek } from "@/lib/roadmap";
 import {
@@ -158,6 +159,9 @@ function EventRow({
   const cost = getEventPage(event.slug)?.cost;
   const copy = eventCopy(event);
   const seats = shownSeats(event, signups ?? NO_SIGNUPS);
+  // A past event with results opens its page, where the wall is.
+  const results = past ? getEventResults(event.slug) : null;
+  const works = results ? worksOnWall(results) : 0;
   const body = (
     <>
       <span className="ev-i">{String(n).padStart(2, "0")}</span>
@@ -175,6 +179,11 @@ function EventRow({
           {past && (
             <span className="tag dash">
               <T zh="已结束" en="Past" />
+            </span>
+          )}
+          {works > 0 && (
+            <span className="tag">
+              <T zh={`${works} 个作品`} en={`${works} works`} />
             </span>
           )}
           {!past && event.registrationClosesAt && (
@@ -210,17 +219,24 @@ function EventRow({
         )}
       </p>
       <span className="ev-go" aria-hidden>
-        {materials || !past ? "→" : "·"}
+        {results || materials || !past ? "→" : "·"}
       </span>
     </>
   );
 
   const props = {
     id: event.slug,
-    className: `ev ${past && !materials ? "past" : ""}`,
+    className: `ev ${past && !results && !materials ? "past" : ""}`,
     "data-kind": event.kind,
     "data-date": formatShortDate(event.startsAt),
   };
+  if (results) {
+    return (
+      <Link {...props} href={`/events/${event.slug}`}>
+        {body}
+      </Link>
+    );
+  }
   if (materials) {
     return (
       <Link {...props} href={`/learn#${event.slug}`}>

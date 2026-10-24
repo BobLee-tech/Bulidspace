@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  ArrowDown,
   ArrowRight,
   CalendarBlank,
   MapPin,
@@ -13,7 +14,8 @@ import { Arr } from "@/components/fx/arr";
 import { SampleNotice } from "@/components/sample-notice";
 import { T } from "@/components/t";
 import { getEventDetail } from "@/lib/data";
-import { eventCopy, getEventPage } from "@/lib/event-pages";
+import { eventCopy, getEventPage, type EventTool } from "@/lib/event-pages";
+import { getEventResults } from "@/lib/event-results";
 import {
   formatDate,
   formatShortDate,
@@ -30,6 +32,7 @@ import {
 import { AddressBar } from "../address-bar";
 import { TimeLeft } from "../countdown";
 import { EVENT_ICONS as ICONS, eventIsFull, shownSeats } from "../event-parts";
+import { EventResultsSection } from "./results";
 import { SignupDock, SignupFocus } from "./signup-dock";
 import { SignupForm } from "./signup-form";
 import "../events.css";
@@ -88,6 +91,7 @@ async function EventDetail({ slug }: { slug: string }) {
   const calendarUrl = `${siteUrl.replace(/^https?:/, "webcal:")}/events.ics`;
   const { capacity, left, groups } = shownSeats(event, signups);
   const open = phase === "open" && event.registrationClosesAt !== null;
+  const results = phase === "past" ? getEventResults(event.slug) : null;
 
   return (
     <section className="sec first evp">
@@ -102,8 +106,9 @@ async function EventDetail({ slug }: { slug: string }) {
         </div>
 
         {/* Wide screens: read on the left, sign up on the right, the form
-            pinned beside the intro. Narrow: intro, form, then the rest. */}
-        <div className="evp-grid">
+            pinned beside the intro. Narrow: intro, form, then the rest.
+            Once it's over, the results run full width under the intro. */}
+        <div className={results ? "evp-grid has-results" : "evp-grid"}>
           <header className="evp-intro">
             <div className="need">
               <span className="tag fill">
@@ -202,41 +207,8 @@ async function EventDetail({ slug }: { slug: string }) {
                 </dd>
               </div>
             </dl>
-            {page?.tools?.length ? (
-              <div className="evp-sec evp-sec-tools">
-                <h2 className="evp-sec-h mono mute">
-                  <T zh="当天用到" en="On the day" />
-                </h2>
-                <ul className="evp-tools">
-                  {page.tools.map((tool) => {
-                    const Glyph = ICONS[tool.icon];
-                    return (
-                      <li key={tool.href}>
-                        {/* A plain link: /prompt is a static file, not a route. */}
-                        <a
-                          href={tool.href}
-                          className="evp-tool"
-                          {...(tool.external
-                            ? { target: "_blank", rel: "noreferrer" }
-                            : {})}
-                        >
-                          <Glyph weight="light" size={22} aria-hidden />
-                          <b>
-                            <T {...tool.title} />
-                          </b>
-                          <span className="mute">
-                            <T {...tool.sub} />
-                          </span>
-                          <span className="mono evp-tool-url">
-                            {tool.short}
-                            <ArrowRight weight="light" size={16} aria-hidden />
-                          </span>
-                        </a>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+            {!results && page?.tools?.length ? (
+              <Tools tools={page.tools} />
             ) : null}
           </header>
 
@@ -291,17 +263,35 @@ async function EventDetail({ slug }: { slug: string }) {
                   />
                 </p>
               )}
-              {phase === "past" && (
-                <p className="evp-msg mute">
-                  <T
-                    zh="讲义、示例和成果墙会在 48 小时内放到资源页。"
-                    en="Slides, examples and the results wall go up on Resources within 48 hours."
-                  />{" "}
-                  <Link href="/learn" className="text-link">
-                    <T zh="去资源页" en="Resources" /> <Arr />
-                  </Link>
-                </p>
-              )}
+              {phase === "past" &&
+                (results ? (
+                  <>
+                    <p className="evp-msg mute">
+                      <T
+                        zh="这场已经结束。大家做出来的网站都在下面，点开就能看。"
+                        en="It's over. The sites people made are below, one click away."
+                      />
+                    </p>
+                    <a
+                      href="#results"
+                      className="btn solid primary"
+                      style={{ alignSelf: "start" }}
+                    >
+                      <T zh="看活动成果" en="See the results" />{" "}
+                      <ArrowDown weight="light" size="1.15em" aria-hidden />
+                    </a>
+                  </>
+                ) : (
+                  <p className="evp-msg mute">
+                    <T
+                      zh="活动成果整理好后会放在这一页，讲义和示例在资源页。"
+                      en="Results go up on this page once they're ready; slides and examples are on Resources."
+                    />{" "}
+                    <Link href="/learn" className="text-link">
+                      <T zh="去资源页" en="Resources" /> <Arr />
+                    </Link>
+                  </p>
+                ))}
               {phase === "external" && event.signupUrl && (
                 <a
                   href={event.signupUrl}
@@ -316,7 +306,13 @@ async function EventDetail({ slug }: { slug: string }) {
             </div>
           </aside>
 
+          {results && <EventResultsSection results={results} />}
+
           <div className="evp-more">
+            {/* After the event the day's pages make way for the results. */}
+            {results && page?.tools?.length ? (
+              <Tools tools={page.tools} />
+            ) : null}
             {page && (
               <>
                 <div className="evp-sec">
@@ -386,6 +382,46 @@ async function EventDetail({ slug }: { slug: string }) {
         />
       )}
     </section>
+  );
+}
+
+/** Pages people open on the day, linked from the event page. */
+function Tools({ tools }: { tools: EventTool[] }) {
+  return (
+    <div className="evp-sec evp-sec-tools">
+      <h2 className="evp-sec-h mono mute">
+        <T zh="当天用到" en="On the day" />
+      </h2>
+      <ul className="evp-tools">
+        {tools.map((tool) => {
+          const Glyph = ICONS[tool.icon];
+          return (
+            <li key={tool.href}>
+              {/* A plain link: /prompt is a static file, not a route. */}
+              <a
+                href={tool.href}
+                className="evp-tool"
+                {...(tool.external
+                  ? { target: "_blank", rel: "noreferrer" }
+                  : {})}
+              >
+                <Glyph weight="light" size={22} aria-hidden />
+                <b>
+                  <T {...tool.title} />
+                </b>
+                <span className="mute">
+                  <T {...tool.sub} />
+                </span>
+                <span className="mono evp-tool-url">
+                  {tool.short}
+                  <ArrowRight weight="light" size={16} aria-hidden />
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

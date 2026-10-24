@@ -58,6 +58,7 @@ pnpm check   # lint + typecheck + format + test + build
 - **审核进展**：发起人在项目页「提交进展」投稿的行是 `pending`，核对后改成 `approved` 才会上时间线并计入指标。
 - **导出双周活跃项目数**：视图 `biweekly_active_projects_history`（每周一行），Export → CSV。视图 `project_activity` 列出每个项目最近一次进展，超过 14 天没动静的排在最前，用来回访；两个视图只在后台可见。
 - **上线资源（工作坊资料）**：`tutorials` 加一行并勾选 `published`（工作坊后 48 小时内）。
+- **活动成果（成果墙）**：活动结束后放在活动页上，数据在 `src/lib/event-results.ts`，截图在 `public/events/<slug>/`，要开 PR。步骤见 `docs/event-results.md`。
 - **每周精选**：`weekly_picks`，每条必须有来源链接和日期，只写摘要。
 - **导出报名**：`join_submissions` 右上角 Export → CSV。成员要求删除数据时直接删对应行。
 - **看意向成员和核心成员申请**：两张表都在 Table Editor 里。`join_submissions` 是官网「加入」提交的意向成员；`volunteer_applications` 是 `/core-team` 提交的核心成员申请（旧地址 `/volunteer` 会跳转过来）：必填的是微信昵称（`nickname`）、邮箱（`email`，用来开通内部协作系统的账号）和想申请的职位；学校与学位、每周投入、个人介绍、简历或作品链接是选填。2026-10-15 之前的申请没有邮箱，联系方式在 `contact`。核心成员申请的 `status` 是下拉框（new → contacted → interviewing → accepted / declined），跟进情况写在 `ops_notes`；这两列只有后台能改，访客提交的永远是 `new`。想要汇总数字，看视图 `join_interest_summary`。

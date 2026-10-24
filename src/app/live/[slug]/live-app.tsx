@@ -801,8 +801,8 @@ function LinkCard({
           />
           <span>
             <T
-              zh="可以把我的网站放上大屏，也愿意被视频记录高光时刻"
-              en="Show my site on the big screen, and happy to be filmed for highlights"
+              zh="可以把我的网站放上大屏和官网成果墙，也愿意被视频记录高光时刻"
+              en="Show my site on the big screen and on the results wall on our website, and happy to be filmed for highlights"
             />
           </span>
         </label>
